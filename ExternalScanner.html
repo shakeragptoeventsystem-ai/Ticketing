@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Shakerag PTO Scanner</title>
+<!--
+  Hosted OUTSIDE Apps Script on purpose: Apps Script's HtmlService renders pages
+  inside a sandboxed iframe that does not delegate camera permission, so
+  navigator.mediaDevices.getUserMedia() fails there regardless of browser
+  permission settings. This page is a plain static HTTPS page (e.g. GitHub Pages)
+  so the camera works, and it talks to the same Apps Script backend over the
+  JSON API in ScannerServer.gs (route_ / doPost) using a Google ID token instead
+  of Session.getActiveUser().
+-->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{--navy:#13294B;--teal:#028090;--teal2:#00A896;--mint:#02C39A;--ink:#1E2A33;--slate:#5A6B76;--cloud:#F4F7F8;--green:#1E8449;--amber:#B26A00;--red:#B00020;--line:#D3DEE4}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--cloud);color:var(--ink)}
+  .app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  header{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+  header .title{font-weight:700;font-size:16px}header .sub{font-size:12px;color:#AEC6CF}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:#1C3A5E;color:#CFE6E6}
+  .pill.online{background:#124a3a;color:#7EE8C8}.pill.offline{background:#5b3b12;color:#F3C77A}
+  main{flex:1;padding:16px;display:flex;flex-direction:column;gap:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(15,30,45,.05)}
+  h2{margin:.1em 0 .5em;font-size:18px;color:var(--navy)}
+  label{font-size:13px;color:var(--slate);font-weight:600;display:block;margin-bottom:6px}
+  input,select{width:100%;padding:13px;font-size:16px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+  .btn{display:block;width:100%;padding:15px;font-size:16px;font-weight:700;border:none;border-radius:12px;background:var(--teal);color:#fff;cursor:pointer;margin-top:10px}
+  .btn:active{transform:translateY(1px)}.btn.secondary{background:#eef3f5;color:var(--navy)}.btn.mint{background:var(--mint);color:#06301f}.btn.ghost{background:transparent;color:var(--teal);border:1.5px solid var(--teal)}.btn:disabled{opacity:.5}
+  .station-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:15px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:16px;font-weight:600;color:var(--ink);margin-bottom:10px;cursor:pointer}
+  .station-btn .dot{width:12px;height:12px;border-radius:50%;background:var(--teal2);flex:none}
+  .station-btn small{display:block;color:var(--slate);font-weight:500;font-size:12px}
+  #reader{width:100%;border-radius:12px;overflow:hidden;background:#000;min-height:220px}
+  .hint{font-size:13px;color:var(--slate);text-align:center;margin-top:8px}
+  .badge{display:inline-block;font-weight:800;font-size:15px;padding:8px 14px;border-radius:10px}
+  .b-comp,.b-paid{background:#E4F5EE;color:var(--green)}.b-need{background:#FDECCB;color:var(--amber)}.b-in{background:#FADBD8;color:var(--red)}
+  .fam-name{font-size:22px;font-weight:800;color:var(--navy);margin:0}.fam-event{color:var(--slate);font-size:13px;margin:2px 0 12px}
+  .item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}.item:first-of-type{border-top:none}
+  .item .nm{font-weight:700}.item .meta{font-size:12px;color:var(--slate)}
+  .counter{display:flex;align-items:center;gap:6px}.qty{min-width:64px;text-align:center;font-weight:800;font-size:15px}.qty .rem{color:var(--teal)}
+  .step{width:40px;height:40px;border-radius:10px;border:none;font-size:22px;font-weight:800;color:#fff;background:var(--teal);cursor:pointer}.step.minus{background:#8aa0ac}.step:disabled{opacity:.35}
+  .done{color:var(--green);font-weight:800;font-size:13px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:24px;font-size:14px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;z-index:20;max-width:90%}
+  .toast.show{opacity:1}.toast.err{background:var(--red)}.toast.ok{background:var(--green)}
+  .muted{color:var(--slate);font-size:13px}.row{display:flex;gap:10px}.row>*{flex:1}.center{text-align:center}
+  .spin{display:inline-block;width:18px;height:18px;border:3px solid #cfe;border-top-color:var(--teal);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px}@keyframes sp{to{transform:rotate(360deg)}}
+  .hidden{display:none!important}
+  #gsiButton{display:flex;justify-content:center;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <header><div><div class="title">Shakerag PTO Scanner</div><div class="sub" id="hdrSub">Sign in to begin</div></div><span class="pill online" id="netPill">online</span></header>
+  <main>
+    <section id="viewLogin" class="card"><h2>Volunteer sign-in</h2><p class="muted">Sign in with the Google account your PTO admin approved as a volunteer.</p><div id="gsiButton"></div><div id="whoami" class="muted center" style="margin:10px 0">Sign in with Google to continue.</div><button class="btn" id="btnContinue" disabled>Continue</button><p class="muted center" style="margin-top:10px">Only approved volunteers can proceed.</p></section>
+    <section id="viewStation" class="card hidden"><h2>Choose event &amp; station</h2><label for="eventSel">Event</label><select id="eventSel"></select><div id="stationList" style="margin-top:14px"></div></section>
+    <section id="viewScan" class="hidden">
+      <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><strong id="scanStation">Station</strong><div class="meta muted" id="scanEvent"></div></div><button class="btn ghost" style="width:auto;margin:0;padding:8px 12px" id="btnChangeStation">Change</button></div><div id="reader"><div class="center" style="color:#fff;padding:40px 10px">Tap Start camera to scan a QR code.</div></div><button class="btn" id="btnStartCamera">Start camera</button><div class="hint" id="scanHint">Tap Start camera to scan, or use manual entry if camera access is unavailable.</div><div class="row" style="margin-top:10px"><input id="manualCode" placeholder="Enter code manually"><button class="btn secondary" style="margin:0;flex:0 0 90px" id="btnManual">Look up</button></div></div>
+      <div class="card hidden" id="resultCard"><p class="fam-name" id="famName">Family</p><p class="fam-event" id="famEvent"></p><div id="statusBadge"></div><div id="itemList" style="margin-top:14px"></div><button class="btn mint hidden" id="btnFulfillAll" style="margin-top:12px">Fulfill all remaining</button><button class="btn secondary" id="btnNext" style="margin-top:10px">Scan next family</button></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* EDIT THESE TWO VALUES for your deployment. See PTO_QR_Email_Runbook.md, "External scanner page". */
+var CONFIG={API_BASE_URL:'PASTE_YOUR_APPS_SCRIPT_/exec_URL_HERE',GOOGLE_CLIENT_ID:'PASTE_YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com'};
+
+var STATE={me:null,idToken:null,events:[],eventId:null,station:null,family:null,scanner:null,lastScanAt:0,lastScanCode:'',_lastQr:null};
+var ADMIN_ROLES={SUPER_ADMIN:4,ADMIN:3,STATION_LEAD:2,VOLUNTEER:1};
+var AUTH_ERROR_CODES=['NO_TOKEN','BAD_TOKEN','BAD_AUDIENCE','UNVERIFIED_EMAIL','NOT_VOLUNTEER'];
+function $(id){return document.getElementById(id);}
+function show(v){['viewLogin','viewStation','viewScan'].forEach(function(x){$(x).classList.add('hidden');});$(v).classList.remove('hidden');}
+function toast(m,k){var t=$('toast');t.textContent=m;t.className='toast show '+(k||'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='toast';},2200);}
+function setNet(){var p=$('netPill');if(navigator.onLine){p.textContent='online';p.className='pill online';}else{p.textContent='offline';p.className='pill offline';}}
+window.addEventListener('online',setNet);window.addEventListener('offline',setNet);
+
+function apiUrl_(params){var qs=Object.keys(params).filter(function(k){return params[k]!=null;}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');return CONFIG.API_BASE_URL+(CONFIG.API_BASE_URL.indexOf('?')>=0?'&':'?')+qs;}
+function handleApiResponse_(resp){return resp.text().then(function(text){var json;try{json=JSON.parse(text);}catch(e){throw {message:'Unexpected server response.'};}if(!json||json.ok!==true){var err=(json&&json.error)||{message:'Request failed.'};if(AUTH_ERROR_CODES.indexOf(err.code)>=0)requireSignIn_(err.message);throw err;}return json.data;});}
+function apiGet_(path,params){return fetch(apiUrl_(Object.assign({path:path,idToken:STATE.idToken||''},params||{})),{method:'GET'}).then(handleApiResponse_,function(){throw {message:'Network error contacting the server. Check your connection and try again.'};});}
+function apiPost_(action,params){return fetch(CONFIG.API_BASE_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action:action,idToken:STATE.idToken||''},params||{}))}).then(handleApiResponse_,function(){throw {message:'Network error contacting the server. Check your connection and try again.'};});}
+function call(fn,args){args=args||[];switch(fn){case 'svcWhoAmI':return apiGet_('whoami',{});case 'svcListEvents':return apiGet_('events',{});case 'svcListStations':return apiGet_('stations',{eventId:args[0]});case 'svcResolve':return apiGet_('resolve',{qrId:args[0],eventId:args[1],stationId:args[2]});case 'svcFulfill':return apiPost_('fulfill',{purchaseId:args[0],delta:args[1],stationId:args[2],idemKey:args[3]});case 'svcFulfillAll':return apiPost_('fulfillAll',{familyId:args[0],eventId:args[1],stationId:args[2],idemKey:args[3]});}return Promise.reject({message:'Unknown API call: '+fn});}
+
+function requireSignIn_(message){stopScanner();STATE.idToken=null;STATE.me=null;show('viewLogin');$('whoami').innerHTML='<span style="color:var(--red)">'+esc(message||'Please sign in again.')+'</span>';$('btnContinue').disabled=true;}
+function onGoogleCredential(resp){STATE.idToken=resp.credential;$('whoami').innerHTML='<span class="spin"></span> checking access…';call('svcWhoAmI').then(function(me){STATE.me=me;$('whoami').innerHTML='Signed in as <strong>'+esc(me.name)+'</strong> ('+esc(me.role)+')';$('hdrSub').textContent=me.name;$('btnContinue').disabled=false;}).catch(function(err){STATE.idToken=null;$('whoami').innerHTML='<span style="color:var(--red)">'+esc(err.message||'Not an approved volunteer')+'</span>';$('btnContinue').disabled=true;});}
+function initGoogleSignIn(){if(typeof google==='undefined'||!google.accounts||!google.accounts.id){setTimeout(initGoogleSignIn,300);return;}if(!CONFIG.GOOGLE_CLIENT_ID||CONFIG.GOOGLE_CLIENT_ID.indexOf('PASTE_YOUR')===0){$('whoami').innerHTML='<span style="color:var(--red)">This page is not configured yet (missing GOOGLE_CLIENT_ID). Ask an admin to finish setup.</span>';return;}google.accounts.id.initialize({client_id:CONFIG.GOOGLE_CLIENT_ID,callback:onGoogleCredential});google.accounts.id.renderButton($('gsiButton'),{theme:'outline',size:'large',width:280});}
+function initLogin(){show('viewLogin');initGoogleSignIn();}
+$('btnContinue').onclick=loadEvents;
+function loadEvents(){show('viewStation');$('stationList').innerHTML='<div class="muted center"><span class="spin"></span> loading…</div>';call('svcListEvents').then(function(events){STATE.events=events;var sel=$('eventSel');sel.innerHTML='';events.forEach(function(e){var o=document.createElement('option');o.value=e.eventId;o.textContent=e.name+'  ('+e.status+')';sel.appendChild(o);});if(events.length){STATE.eventId=events[0].eventId;loadStations();}else $('stationList').innerHTML='<p class="muted">No events found.</p>';}).catch(function(err){toast(err.message,'err');});}
+$('eventSel').onchange=function(){STATE.eventId=this.value;loadStations();};
+function loadStations(){$('stationList').innerHTML='<div class="muted center"><span class="spin"></span> loading stations…</div>';call('svcListStations',[STATE.eventId]).then(function(stations){var box=$('stationList');box.innerHTML='';if(!stations.length){box.innerHTML='<p class="muted">No stations for this event.</p>';return;}stations.forEach(function(s){var b=document.createElement('button');b.className='station-btn';b.innerHTML='<span class="dot"></span><span>'+esc(s.name)+'<small>'+esc((s.allowedItemTypes||[]).join(', '))+'</small></span>';b.onclick=function(){selectStation(s);};box.appendChild(b);});}).catch(function(err){toast(err.message,'err');});}
+function selectStation(s){STATE.station=s;$('scanStation').textContent=s.name;var ev=(STATE.events.find(function(e){return e.eventId===STATE.eventId;})||{}).name||'';$('scanEvent').textContent=ev+(s.sessionLabel?(' • '+s.sessionLabel):'')+' • '+(s.allowedItemTypes||[]).join(', ');show('viewScan');prepareScanner();}
+$('btnChangeStation').onclick=function(){stopScanner();loadEvents();};
+function prepareScanner(){$('resultCard').classList.add('hidden');$('manualCode').value='';$('manualCode').disabled=false;$('btnManual').disabled=false;$('btnStartCamera').classList.remove('hidden');$('btnStartCamera').disabled=false;$('reader').innerHTML='<div class="center" style="color:#fff;padding:40px 10px">Tap Start camera to scan a QR code.</div>';$('scanHint').textContent='Tap Start camera to scan, or use manual entry if camera access is unavailable.';}
+$('btnStartCamera').onclick=startScanner;
+function startScanner(){var btn=$('btnStartCamera'),config={fps:10,qrbox:{width:220,height:220},aspectRatio:1};btn.disabled=true;$('scanHint').innerHTML='<span class="spin"></span> requesting camera access…';if(!window.isSecureContext||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showCameraError('Camera access requires this page to be opened over HTTPS in Safari or Chrome.');return;}if(typeof Html5Qrcode==='undefined'){showCameraError('Camera library did not load. Check your internet connection and reload the page, or use manual entry.');return;}stopScanner().then(function(){STATE.scanner=new Html5Qrcode('reader');return STATE.scanner.start({facingMode:{exact:'environment'}},config,onScan,function(){}).catch(function(err){if(!isConstraintError(err))throw err;console.warn('Exact environment camera unavailable; retrying with preferred environment camera.',err);return STATE.scanner.start({facingMode:'environment'},config,onScan,function(){});});}).then(function(){btn.classList.add('hidden');$('scanHint').textContent='Point the camera at the family\'s QR code';}).catch(function(err){console.error('Camera startup failed:',err);showCameraError(cameraErrorMessage(err));});}
+function stopScanner(){var scanner=STATE.scanner;STATE.scanner=null;if(!scanner)return Promise.resolve();try{return scanner.isScanning?scanner.stop().then(function(){scanner.clear();}).catch(function(){try{scanner.clear();}catch(e){}}):(scanner.clear(),Promise.resolve());}catch(e){return Promise.resolve();}}
+function showCameraError(message){$('reader').innerHTML='<div class="center" style="color:#fff;padding:32px 10px">'+esc(message)+'</div>';$('scanHint').textContent='Fix camera permission and tap Start camera again, or use manual entry.';$('btnStartCamera').classList.remove('hidden');$('btnStartCamera').disabled=false;}
+function isConstraintError(err){var name=String(err&&err.name||''),message=String(err&&err.message||err||'');return name==='OverconstrainedError'||name==='ConstraintNotSatisfiedError'||/overconstrained|constraint.*(?:fail|satisf)/i.test(message);}
+function cameraErrorMessage(err){var name=String(err&&err.name||''),message=String(err&&err.message||err||'');console.error('Camera error details:',{name:name,message:message,href:location.href,origin:location.origin,protocol:location.protocol,isSecureContext:window.isSecureContext,mediaDevices:!!navigator.mediaDevices,getUserMedia:!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia),userAgent:navigator.userAgent});if(name==='NotAllowedError')return 'This page is blocking camera access. Check your browser\'s site settings for Camera and set it to Allow, then reload this page.';if(name==='NotFoundError')return 'No usable camera was found on this device.';if(name==='NotReadableError')return 'The camera was found, but could not be opened. Close other apps using the camera and try again.';if(isConstraintError(err))return 'The requested camera could not be selected. Try again or use manual entry.';if(name==='SecurityError')return 'The browser blocked camera access for security reasons.';return 'Camera could not start ('+(name||'Unknown error')+'). '+(message||'Try again or use manual entry.');}
+function onScan(code){var now=Date.now();if(code===STATE.lastScanCode&&(now-STATE.lastScanAt)<2500)return;STATE.lastScanCode=code;STATE.lastScanAt=now;beep();resolve(code);}
+$('btnManual').onclick=function(){var c=$('manualCode').value.trim();if(!c){toast('Enter a code','err');return;}resolve(c);};
+function setManualLookupDisabled(v){$('btnManual').disabled=v;$('manualCode').disabled=v;}
+function resolve(qrId){STATE._lastQr=qrId;setManualLookupDisabled(true);$('scanHint').innerHTML='<span class="spin"></span> looking up…';call('svcResolve',[qrId,STATE.eventId,STATE.station.stationId]).then(function(res){STATE.family=res;renderResult(res);$('scanHint').textContent='Point the camera at the next family\'s QR code';}).catch(function(err){setManualLookupDisabled(false);$('scanHint').textContent='Point the camera at the family\'s QR code';var m=err.code==='INVALID_QR'?'QR not recognized':err.code==='DISABLED'?'Family inactive — see an admin':(err.message||'Lookup failed');toast(m,'err');});}
+function renderResult(res){$('resultCard').classList.remove('hidden');$('famName').textContent=res.family.name;$('famEvent').textContent=(STATE.events.find(function(e){return e.eventId===STATE.eventId;})||{}).name||'';var b=$('statusBadge'),s=res.status,html='';if(s==='COMPLIMENTARY')html='<span class="badge b-comp">✅ COMPLIMENTARY</span>';else if(s==='PAID'){var admission=res.admission||{},detail=(admission.adults||admission.children)?'Adults '+(admission.adults||0)+' · Students '+(admission.children||0):'Admissions '+(admission.total||0);html='<span class="badge b-paid">✅ PAID</span> <span class="muted">'+detail+'</span>';}else if(s==='NEEDS_TO_PAY')html='<span class="badge b-need">🟡 NEEDS TO PAY</span>';else if(s==='ALREADY_CHECKED_IN'){var ci=res.checkin||{};var extra=ci.time?(' — '+fmtTime(ci.time)+(ci.station?(' at '+ci.station):'')):'';html='<span class="badge b-in">🔴 ALREADY CHECKED IN</span><div class="muted" style="margin-top:6px">'+esc(extra)+'</div>';}b.innerHTML=html;var list=$('itemList');list.innerHTML='';var anyRem=false;if(!res.items.length)list.innerHTML='<p class="muted">No items for this station.</p>';res.items.forEach(function(it){var rem=it.remaining;if(rem>0)anyRem=true;var row=document.createElement('div');row.className='item';row.innerHTML='<div><div class="nm">'+esc(it.name)+'</div><div class="meta">'+esc(it.itemType)+(it.sessionLabel?'<br><strong>'+esc(it.sessionLabel)+'</strong>':'')+'</div></div><div class="counter">'+(rem>0?'<button class="step minus" data-p="'+it.purchaseId+'" data-d="-1">−</button>':'')+'<div class="qty"><span class="rem">'+it.fulfilled+'</span>/'+it.purchased+(rem===0?'<div class="done">✓ done</div>':'')+'</div>'+(rem>0?'<button class="step" data-p="'+it.purchaseId+'" data-d="1">+</button>':'')+'</div>';list.appendChild(row);});Array.prototype.forEach.call(list.querySelectorAll('.step'),function(btn){btn.onclick=function(){stepItem(btn.getAttribute('data-p'),parseInt(btn.getAttribute('data-d'),10));};});var fa=$('btnFulfillAll');fa.disabled=false;if(anyRem)fa.classList.remove('hidden');else fa.classList.add('hidden');}
+function applyFulfillmentResults(updates){var byId={},admissionChanged=false;(updates||[]).forEach(function(u){byId[u.purchaseId]=u;});STATE.family.items.forEach(function(it){var u=byId[it.purchaseId];if(u){it.fulfilled=u.qtyFulfilled;it.remaining=u.qtyRemaining;if(it.itemType.indexOf('ADMISSION')===0)admissionChanged=true;}});if(admissionChanged){var admissions=STATE.family.items.filter(function(it){return it.itemType.indexOf('ADMISSION')===0;});STATE.family.status=admissions.length&&admissions.every(function(it){return it.remaining===0;})?'ALREADY_CHECKED_IN':'PAID';STATE.family.checkin=null;}renderResult(STATE.family);}
+function stepItem(purchaseId,delta){if(delta<0&&ADMIN_ROLES[STATE.me.role]<ADMIN_ROLES.ADMIN){toast('Only admins can undo','err');return;}setStepsDisabled(true);var idem=STATE.station.stationId+'-'+purchaseId+'-'+Date.now();call('svcFulfill',[purchaseId,delta,STATE.station.stationId,idem]).then(function(result){applyFulfillmentResults([{purchaseId:purchaseId,qtyFulfilled:result.qtyFulfilled,qtyRemaining:result.qtyRemaining}]);toast(delta>0?'Redeemed':'Undone','ok');}).catch(function(err){setStepsDisabled(false);var m=err.code==='OVER_FULFILL'?('Only '+(err.remaining!=null?err.remaining:'0')+' remaining'):err.code==='STATION_SCOPE'?'Not redeemable at this station':err.code==='STATION_SESSION'?'Item belongs to a different session':err.code==='FORBIDDEN'?'Not allowed':(err.message||'Failed');toast(m,'err');});}
+$('btnFulfillAll').onclick=function(){setStepsDisabled(true);var idem=STATE.station.stationId+'-ALL-'+STATE.family.family.familyId+'-'+Date.now();call('svcFulfillAll',[STATE.family.family.familyId,STATE.eventId,STATE.station.stationId,idem]).then(function(result){applyFulfillmentResults(result.updated);toast('Fulfilled remaining','ok');}).catch(function(err){setStepsDisabled(false);toast(err.message||'Failed','err');});};
+function setStepsDisabled(v){Array.prototype.forEach.call(document.querySelectorAll('.step,#btnFulfillAll'),function(b){b.disabled=v;});}
+function resolveRefresh(){var qr=STATE._lastQr;if(!qr)return;call('svcResolve',[qr,STATE.eventId,STATE.station.stationId]).then(function(res){STATE.family=res;renderResult(res);}).catch(function(){});}
+$('btnNext').onclick=function(){$('resultCard').classList.add('hidden');STATE.lastScanCode='';STATE._lastQr=null;$('manualCode').value='';setManualLookupDisabled(false);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmtTime(t){try{var d=new Date(t);return d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}catch(e){return String(t);}}
+function beep(){try{var a=new(window.AudioContext||window.webkitAudioContext)();var o=a.createOscillator();var g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=0.05;o.start();setTimeout(function(){o.stop();a.close&&a.close();},110);}catch(e){}}
+setNet();initLogin();
+</script>
+</body>
+</html>
