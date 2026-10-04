@@ -67,7 +67,7 @@
 <div class="toast" id="toast"></div>
 <script>
 /* EDIT THESE TWO VALUES for your deployment. See PTO_QR_Email_Runbook.md, "External scanner page". */
-var CONFIG={API_BASE_URL:'https://script.google.com/macros/s/AKfycbzAT5baHHG1lgnkBua1O1zYjLDHfmsprp8rimILZn3-mLQm5017U1XZbsMIC0qqE-tKqA/exec',GOOGLE_CLIENT_ID:'541615505271-eq81cpbhb12f6b7bocrlf7m9bkiu32e2.apps.googleusercontent.com'};
+var CONFIG={API_BASE_URL:'https://script.google.com/macros/s/AKfycbxY9OkjTJLMrtjGNXnitK8Mhavn60iTNVofU2KrQtnzwMHK7HXpog-T7cn57_7mJQBoNg/exec',GOOGLE_CLIENT_ID:'541615505271-eq81cpbhb12f6b7bocrlf7m9bkiu32e2.apps.googleusercontent.com'};
 
 var STATE={me:null,idToken:null,events:[],eventId:null,station:null,family:null,scanner:null,lastScanAt:0,lastScanCode:'',_lastQr:null};
 var ADMIN_ROLES={SUPER_ADMIN:4,ADMIN:3,STATION_LEAD:2,VOLUNTEER:1};
