@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TEST Shakerag PTO Admin</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root{--navy:#13294B;--teal:#028090;--mint:#02C39A;--ink:#1E2A33;--slate:#5A6B76;--cloud:#F4F7F8;--green:#1E8449;--amber:#B26A00;--red:#B00020;--line:#D3DEE4}
+    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--cloud);color:var(--ink)}
+    .wrap{max-width:1000px;margin:0 auto;padding:0 0 40px}
+    header{background:var(--navy);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+    header .t{font-weight:700;font-size:17px}header .s{font-size:12px;color:#AEC6CF}
+    .tabs{display:flex;gap:6px;background:#0f2138;padding:0 12px}
+    .tab{padding:11px 16px;color:#AEC6CF;font-weight:600;font-size:14px;cursor:pointer;border-bottom:3px solid transparent}.tab.active{color:#fff;border-bottom-color:var(--mint)}
+    main{padding:16px}.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    select,input{padding:10px 12px;font-size:15px;border:1.5px solid var(--line);border-radius:9px;background:#fff}
+    .btn{padding:10px 14px;font-size:14px;font-weight:700;border:none;border-radius:9px;background:var(--teal);color:#fff;cursor:pointer}.btn.ghost{background:#fff;color:var(--teal);border:1.5px solid var(--teal)}.btn.mini{padding:6px 10px;font-size:13px}.btn.red{background:var(--red)}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;margin-bottom:16px}.card h3{margin:0;padding:12px 14px;background:#eef3f5;font-size:14px;color:var(--navy);border-bottom:1px solid var(--line)}
+    table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #eef1f4}th{background:#fafbfc;color:var(--slate);font-size:12px;text-transform:uppercase;letter-spacing:.3px}tr:hover td{background:#fbfdff}
+    .pilln{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:#eef3f5;color:var(--slate)}
+    .rem-hot{color:var(--red);font-weight:800}.rem-ok{color:var(--green);font-weight:700}
+    .totals{display:flex;gap:18px;flex-wrap:wrap;padding:12px 14px;background:#f7fbff;border-top:1px solid var(--line)}.stat{font-size:13px;color:var(--slate)}.stat b{display:block;font-size:22px;color:var(--navy)}
+    .muted{color:var(--slate);font-size:13px}.center{text-align:center;padding:22px}
+    .spin{display:inline-block;width:18px;height:18px;border:3px solid #cfe;border-top-color:var(--teal);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px}@keyframes sp{to{transform:rotate(360deg)}}
+    .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:24px;font-size:14px;font-weight:600;opacity:0;transition:opacity .2s;z-index:20}.toast.show{opacity:1}.toast.err{background:var(--red)}.toast.ok{background:var(--green)}
+    .fam{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden}.fam .fh{padding:9px 12px;background:#f3f7fa;font-weight:700;color:var(--navy);display:flex;justify-content:space-between}
+    .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}.a-redeem{background:#E4F5EE;color:var(--green)}.a-undo{background:#FADBD8;color:var(--red)}.a-checkin{background:#E4F5EE;color:var(--green)}.a-other{background:#eef3f5;color:var(--slate)}
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header><div><div class="t">TEST Shakerag PTO Admin</div><div class="s" id="who">Sign in to continue</div></div><button class="btn ghost mini" onclick="refresh()">Refresh</button></header>
+  <section id="viewLogin" style="padding:24px 16px"><div class="card" style="padding:18px;max-width:420px;margin:0 auto"><h2 style="margin:0 0 8px;font-size:18px;color:var(--navy)">Admin sign-in</h2><p class="muted">Sign in with the Google account listed as ADMIN or SUPER_ADMIN on the Volunteer tab.</p><div id="gsiButton" style="display:flex;justify-content:center;margin:12px 0"></div><div id="loginMsg" class="muted" style="text-align:center">Sign in with Google to continue.</div></div></section>
+  <div id="adminApp" class="hidden">
+  <div class="tabs"><div class="tab active" data-tab="dash" onclick="switchTab('dash')">Fulfillment</div><div class="tab" data-tab="fam" onclick="switchTab('fam')">Families / Undo</div><div class="tab" data-tab="comps" onclick="switchTab('comps')">Comps</div><div class="tab" data-tab="vols" onclick="switchTab('vols')">Volunteers</div><div class="tab" data-tab="audit" onclick="switchTab('audit')">Audit Log</div></div>
+  <main>
+    <div class="bar"><label class="muted">Event:</label><select id="eventSel" onchange="onEvent()"></select></div>
+    <section id="tab-dash"><div class="card"><h3>Fulfillment by item</h3><div id="dashBody"><div class="center"><span class="spin"></span></div></div><div class="totals" id="dashTotals"></div></div></section>
+    <section id="tab-fam" class="hidden"><div class="bar"><input id="famSearch" placeholder="Search family name…" oninput="debouncedFam()"><span class="muted">Tap a line's Undo to reverse one unit.</span></div><div id="famBody"><div class="center"><span class="spin"></span></div></div></section>
+    <section id="tab-comps" class="hidden">
+      <div class="card"><h3>Comp rules (group, condition-based)</h3><div class="bar" style="padding:12px 14px 0"><button class="btn mini" onclick="openRuleForm()">+ Add rule</button><button class="btn ghost mini" onclick="applyRules()">Apply comp rules for this event</button><span class="muted">Creates Purchase rows for every family currently matching a rule below.</span></div><div id="rulesBody" style="padding:0 14px 14px"><div class="center"><span class="spin"></span></div></div></div>
+      <div class="card hidden" id="ruleFormCard"><h3 id="ruleFormTitle">New comp rule</h3><div style="padding:14px">
+        <div class="bar"><label class="muted">If family's</label><select id="rfField"><option value="">— Any family —</option><option value="member_tier">member_tier</option><option value="sponsor_level">sponsor_level</option><option value="donor_flag">donor_flag</option><option value="active">active</option></select><select id="rfOp"><option value="equals">equals</option><option value="in">is one of</option></select><input id="rfValue" placeholder="e.g. PLATINUM or A,B,C"></div>
+        <div class="bar"><label class="muted">Grant</label><select id="rfItem"></select><input id="rfQty" type="number" min="1" value="1" style="width:80px"><button class="btn mini ghost" onclick="addGrantChip()">+ Add item</button></div>
+        <div id="rfGrants" class="bar" style="flex-wrap:wrap"></div>
+        <div class="bar"><label class="muted">Priority</label><input id="rfPriority" type="number" value="0" style="width:80px"><button class="btn" onclick="saveRule()">Save rule</button><button class="btn ghost" onclick="closeRuleForm()">Cancel</button></div>
+      </div></div>
+      <div class="card"><h3>Ad hoc comp (one family, specific item)</h3><div style="padding:14px">
+        <div class="bar"><input id="ahFamQuery" placeholder="Search family name…" oninput="debouncedAdhocFam()"><select id="ahFam"></select></div>
+        <div class="bar"><select id="ahItem"></select><input id="ahQty" type="number" min="1" value="1" style="width:80px"><input id="ahNote" placeholder="Reason (optional)" style="flex:1"><button class="btn" onclick="grantAdhoc()">Grant comp</button></div>
+      </div></div>
+    </section>
+    <section id="tab-vols" class="hidden">
+      <div class="card"><h3>Add volunteer</h3><div class="bar" style="padding:12px 14px">
+        <input id="volEmail" type="email" placeholder="Google account email">
+        <input id="volName" placeholder="Display name">
+        <select id="volRole"><option value="VOLUNTEER">VOLUNTEER</option><option value="STATION_LEAD">STATION_LEAD</option><option value="ADMIN">ADMIN</option><option value="SUPER_ADMIN">SUPER_ADMIN</option></select>
+        <button class="btn" onclick="addVolunteer()">Add volunteer</button>
+      </div><p class="muted" style="padding:0 14px 12px">IDs are generated once and are never reused. Deactivate former volunteers instead of deleting them.</p></div>
+      <div class="card"><h3>Authorized volunteers</h3><div id="volBody"><div class="center"><span class="spin"></span></div></div></div>
+    </section>
+    <section id="tab-audit" class="hidden"><div class="card"><h3>Recent actions (most recent first)</h3><div id="auditBody"><div class="center"><span class="spin"></span></div></div></div></section>
+  </main>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* Same two values as ExternalScanner.html. */
+var CONFIG={API_BASE_URL:'https://script.google.com/macros/s/AKfycbzAT5baHHG1lgnkBua1O1zYjLDHfmsprp8rimILZn3-mLQm5017U1XZbsMIC0qqE-tKqA/exec',GOOGLE_CLIENT_ID:'541615505271-eq81cpbhb12f6b7bocrlf7m9bkiu32e2.apps.googleusercontent.com'};
+var ID_TOKEN=null,AUTH_ERROR_CODES=['NO_TOKEN','BAD_TOKEN','BAD_AUDIENCE','BAD_ISSUER','UNVERIFIED_EMAIL','NOT_VOLUNTEER'];
+var EVENTS=[],EVID=null,TAB='dash';
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function toast(m,k){var t=$('toast');t.textContent=m;t.className='toast show '+(k||'');clearTimeout(t._t);t._t=setTimeout(function(){t.className='toast';},2200);}
+function call(fn,args){return fetch(CONFIG.API_BASE_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'admin',idToken:ID_TOKEN||'',fn:fn,args:args||[]})}).then(function(resp){return resp.text();},function(){throw {message:'Network error contacting the server. Check your connection and try again.'};}).then(function(text){var json;try{json=JSON.parse(text);}catch(e){throw {message:'Unexpected server response.'};}if(!json||json.ok!==true){var err=(json&&json.error)||{message:'Request failed.'};if(AUTH_ERROR_CODES.indexOf(err.code)>=0)requireSignIn_(err.message);throw err;}return json.data;});}
+function requireSignIn_(msg){ID_TOKEN=null;EVID=null;$('adminApp').classList.add('hidden');$('viewLogin').classList.remove('hidden');$('who').textContent='Sign in to continue';$('loginMsg').innerHTML='<span style="color:var(--red)">'+esc(msg||'Please sign in again.')+'</span>';}
+function onGoogleCredential(resp){ID_TOKEN=resp.credential;$('loginMsg').innerHTML='<span class="spin"></span> checking admin access…';startAdmin();}
+function initGoogleSignIn(){if(typeof google==='undefined'||!google.accounts||!google.accounts.id){setTimeout(initGoogleSignIn,300);return;}if(!CONFIG.GOOGLE_CLIENT_ID||CONFIG.GOOGLE_CLIENT_ID.indexOf('PASTE_YOUR')===0){$('loginMsg').innerHTML='<span style="color:var(--red)">This page is not configured yet (missing GOOGLE_CLIENT_ID).</span>';return;}google.accounts.id.initialize({client_id:CONFIG.GOOGLE_CLIENT_ID,callback:onGoogleCredential});google.accounts.id.renderButton($('gsiButton'),{theme:'outline',size:'large',width:280});}
+function switchTab(t){TAB=t;['dash','fam','comps','vols','audit'].forEach(function(x){$('tab-'+x).classList.toggle('hidden',x!==t);document.querySelector('.tab[data-tab="'+x+'"]').classList.toggle('active',x===t);});refresh();}
+function onEvent(){EVID=$('eventSel').value;refresh();}
+function refresh(){if(!EVID&&TAB!=='vols')return;if(TAB==='dash')loadDash();else if(TAB==='fam')loadFam();else if(TAB==='comps')loadComps();else if(TAB==='vols')loadVolunteers();else loadAudit();}
+function startAdmin(){call('requireAdminBoot').then(function(me){$('who').textContent=me.name+' ('+me.role+')';$('viewLogin').classList.add('hidden');$('adminApp').classList.remove('hidden');return call('adminListEvents');}).then(function(evts){EVENTS=evts;var s=$('eventSel');s.innerHTML='';evts.forEach(function(e){var o=document.createElement('option');o.value=e.eventId;o.textContent=e.name+' ('+e.status+')';s.appendChild(o);});if(evts.length){EVID=evts[0].eventId;refresh();}else $('dashBody').innerHTML='<div class="center muted">No events found.</div>';}).catch(function(err){var msg=esc(err.message||'Admin access required');$('loginMsg').innerHTML='<span style="color:var(--red)">'+msg+'</span>';$('dashBody').innerHTML='<div class="center" style="color:#B00020">'+msg+'</div>';});}
+initGoogleSignIn();
+function loadDash(){$('dashBody').innerHTML='<div class="center"><span class="spin"></span></div>';call('adminFulfillmentSummary',[EVID]).then(function(d){if(!d.rows.length){$('dashBody').innerHTML='<div class="center muted">No purchases for this event yet.</div>';$('dashTotals').innerHTML='';return;}var h='<table><thead><tr><th>Item</th><th>Session</th><th>Type</th><th>Station</th><th>Purch</th><th>Fulf</th><th>Remaining</th></tr></thead><tbody>';d.rows.forEach(function(r){var rc=r.remaining>0?'rem-hot':'rem-ok';h+='<tr><td>'+esc(r.name)+'</td><td>'+esc(r.session||'—')+'</td><td><span class="pilln">'+esc(r.type)+'</span></td><td>'+esc(r.station)+'</td><td>'+r.purchased+'</td><td>'+r.fulfilled+'</td><td class="'+rc+'">'+r.remaining+'</td></tr>';});h+='</tbody></table>';$('dashBody').innerHTML=h;var t=d.totals,pct=t.purchased?Math.round(100*t.fulfilled/t.purchased):0;$('dashTotals').innerHTML='<div class="stat">Purchased<b>'+t.purchased+'</b></div><div class="stat">Fulfilled<b>'+t.fulfilled+'</b></div><div class="stat">Remaining<b>'+t.remaining+'</b></div><div class="stat">Progress<b>'+pct+'%</b></div>';}).catch(function(e){toast(e.message,'err');});}
+var _famT;function debouncedFam(){clearTimeout(_famT);_famT=setTimeout(loadFam,300);}
+function loadFam(){$('famBody').innerHTML='<div class="center"><span class="spin"></span></div>';call('adminFamilyDetail',[EVID,$('famSearch').value]).then(function(fams){if(!fams.length){$('famBody').innerHTML='<div class="center muted">No matching families.</div>';return;}var h='';fams.forEach(function(f){h+='<div class="fam"><div class="fh"><span>'+esc(f.name)+'</span><span class="muted">'+esc(f.familyId)+'</span></div><table><tbody>';f.lines.forEach(function(l){var canUndo=l.fulfilled>0;h+='<tr><td>'+esc(l.item)+(l.session?'<div class="muted">'+esc(l.session)+'</div>':'')+'</td><td><span class="pilln">'+esc(l.type)+'</span></td><td>'+l.fulfilled+' / '+l.purchased+'</td><td style="text-align:right">'+(canUndo?'<button class="btn red mini" onclick="undo(\''+l.purchaseId+'\')">Undo 1</button>':'<span class="muted">—</span>')+'</td></tr>';});h+='</tbody></table></div>';});$('famBody').innerHTML=h;}).catch(function(e){toast(e.message,'err');});}
+function undo(pid){if(!confirm('Undo one unit of this fulfillment?'))return;call('adminUndoFulfillment',[pid,1]).then(function(r){toast('Undone (now '+r.qtyFulfilled+' fulfilled)','ok');loadFam();}).catch(function(e){toast(e.message,'err');});}
+function loadAudit(){$('auditBody').innerHTML='<div class="center"><span class="spin"></span></div>';call('adminAuditLog',[EVID,150]).then(function(rows){if(!rows.length){$('auditBody').innerHTML='<div class="center muted">No audit entries yet.</div>';return;}var h='<table><thead><tr><th>When</th><th>Action</th><th>Vol</th><th>Station</th><th>Family</th><th>Item</th><th>Qty</th><th>Result</th></tr></thead><tbody>';rows.forEach(function(a){var cls=a.action==='UNDO'?'a-undo':(a.action==='CHECKIN'?'a-checkin':(a.action==='REDEEM'?'a-redeem':'a-other'));h+='<tr><td>'+esc(a.timestamp)+'</td><td><span class="badge '+cls+'">'+esc(a.action)+'</span></td><td>'+esc(a.volunteer)+'</td><td>'+esc(a.station)+'</td><td>'+esc(a.family)+'</td><td>'+esc(a.item)+'</td><td>'+esc(a.qty)+'</td><td>'+esc(a.result)+'</td></tr>';});h+='</tbody></table>';$('auditBody').innerHTML=h;}).catch(function(e){toast(e.message,'err');});}
+
+/* ---------------- Comps ---------------- */
+var COMP_ITEMS=[],RULE_GRANTS=[],EDIT_RULE_ID=null;
+function loadComps(){
+  $('rulesBody').innerHTML='<div class="center"><span class="spin"></span></div>';
+  Promise.all([call('adminListEventItems',[EVID]),call('adminListEventRules',[EVID])]).then(function(r){
+    COMP_ITEMS=r[0];
+    var itemName=function(id){var it=COMP_ITEMS.find(function(x){return x.itemId===id;});return it?it.name:id;};
+    var opts='<option value="">Select item…</option>'+COMP_ITEMS.map(function(i){return '<option value="'+esc(i.itemId)+'">'+esc(i.name)+'</option>';}).join('');
+    $('rfItem').innerHTML=opts; $('ahItem').innerHTML=opts;
+    var rules=r[1];
+    if(!rules.length){$('rulesBody').innerHTML='<div class="muted">No comp rules yet for this event.</div>';}
+    else{var h='<table><thead><tr><th>Priority</th><th>Condition</th><th>Grants</th><th>Result</th><th></th></tr></thead><tbody>';rules.forEach(function(rl){var cond=rl.conditionOp==='any'?'Any family':(rl.conditionOp==='raw'?rl.conditionValue:(rl.conditionField+' '+(rl.conditionOp==='in'?'is one of':'=')+' '+rl.conditionValue));var grants=rl.grants.map(function(g){return itemName(g.itemId)+' x'+g.qty;}).join(', ')||'—';h+='<tr><td>'+rl.priority+'</td><td>'+esc(cond)+'</td><td>'+esc(grants)+'</td><td><span class="pilln">'+esc(rl.result)+'</span></td><td style="text-align:right"><button class="btn ghost mini" onclick="editRule(\''+rl.ruleId+'\')">Edit</button> <button class="btn red mini" onclick="deleteRule(\''+rl.ruleId+'\')">Delete</button></td></tr>';});h+='</tbody></table>';$('rulesBody').innerHTML=h;window._RULES=rules;}
+  }).catch(function(e){toast(e.message,'err');});
+}
+function openRuleForm(){EDIT_RULE_ID=null;RULE_GRANTS=[];$('ruleFormTitle').textContent='New comp rule';$('rfField').value='';$('rfOp').value='equals';$('rfValue').value='';$('rfPriority').value='0';renderGrantChips();$('ruleFormCard').classList.remove('hidden');}
+function closeRuleForm(){$('ruleFormCard').classList.add('hidden');}
+function editRule(ruleId){var rl=(window._RULES||[]).find(function(r){return r.ruleId===ruleId;});if(!rl)return;EDIT_RULE_ID=ruleId;RULE_GRANTS=rl.grants.slice();$('ruleFormTitle').textContent='Edit comp rule';$('rfField').value=rl.conditionOp==='any'?'':rl.conditionField;$('rfOp').value=rl.conditionOp==='any'?'equals':rl.conditionOp;$('rfValue').value=rl.conditionValue;$('rfPriority').value=rl.priority;renderGrantChips();$('ruleFormCard').classList.remove('hidden');}
+function addGrantChip(){var itemId=$('rfItem').value,qty=Math.max(1,parseInt($('rfQty').value,10)||1);if(!itemId){toast('Choose an item first','err');return;}RULE_GRANTS.push({itemId:itemId,qty:qty});renderGrantChips();}
+function renderGrantChips(){var it=function(id){var m=COMP_ITEMS.find(function(x){return x.itemId===id;});return m?m.name:id;};$('rfGrants').innerHTML=RULE_GRANTS.map(function(g,i){return '<span class="pilln">'+esc(it(g.itemId))+' x'+g.qty+' <a href="#" onclick="removeGrantChip('+i+');return false;" style="color:var(--red);text-decoration:none">✕</a></span>';}).join(' ')||'<span class="muted">No items granted yet.</span>';}
+function removeGrantChip(i){RULE_GRANTS.splice(i,1);renderGrantChips();}
+function saveRule(){var rule={ruleId:EDIT_RULE_ID,eventId:EVID,priority:$('rfPriority').value,result:'COMPLIMENTARY',conditionField:$('rfField').value,conditionOp:$('rfField').value?$('rfOp').value:'any',conditionValue:$('rfValue').value,grants:RULE_GRANTS};call('adminSaveEventRule',[rule]).then(function(){toast('Rule saved','ok');closeRuleForm();loadComps();}).catch(function(e){toast(e.message,'err');});}
+function deleteRule(ruleId){if(!confirm('Delete this comp rule?'))return;call('adminDeleteEventRule',[ruleId]).then(function(){toast('Rule deleted','ok');loadComps();}).catch(function(e){toast(e.message,'err');});}
+function applyRules(){if(!confirm('Apply comp rules now? This creates Purchase rows for every currently-matching family.'))return;call('adminApplyRules',[EVID]).then(function(r){toast('Applied: '+r.families+' families, '+r.granted+' item grants','ok');}).catch(function(e){toast(e.message,'err');});}
+var _adhocFamT;function debouncedAdhocFam(){clearTimeout(_adhocFamT);_adhocFamT=setTimeout(searchAdhocFam,300);}
+function searchAdhocFam(){call('adminSearchFamilies',[$('ahFamQuery').value]).then(function(fams){$('ahFam').innerHTML=fams.map(function(f){return '<option value="'+esc(f.familyId)+'">'+esc(f.name)+'</option>';}).join('');}).catch(function(e){toast(e.message,'err');});}
+function grantAdhoc(){var familyId=$('ahFam').value,itemId=$('ahItem').value,qty=Math.max(1,parseInt($('ahQty').value,10)||1),note=$('ahNote').value;if(!familyId||!itemId){toast('Pick a family and an item','err');return;}call('adminGrantAdhocComp',[familyId,EVID,itemId,qty,note]).then(function(){toast('Comp granted','ok');$('ahNote').value='';}).catch(function(e){toast(e.message,'err');});}
+function loadVolunteers(){ $('volBody').innerHTML='<div class="center"><span class="spin"></span></div>'; call('adminListVolunteers').then(function(volunteers){ if(!volunteers.length){$('volBody').innerHTML='<div class="center muted">No volunteers configured.</div>';return;} var h='<table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>'; volunteers.forEach(function(v){h+='<tr><td>'+esc(v.volunteerId)+'</td><td>'+esc(v.displayName)+'</td><td>'+esc(v.email)+'</td><td><span class="pilln">'+esc(v.role)+'</span></td><td>'+ (v.active?'<span class="rem-ok">Active</span>':'<span class="muted">Inactive</span>')+'</td><td style="text-align:right">'+(v.active?'<button class="btn red mini" onclick="setVolunteerActive(\''+esc(v.volunteerId)+'\',false)">Deactivate</button>':'<button class="btn ghost mini" onclick="setVolunteerActive(\''+esc(v.volunteerId)+'\',true)">Reactivate</button>')+'</td></tr>';}); h+='</tbody></table>'; $('volBody').innerHTML=h; }).catch(function(e){toast(e.message,'err');}); }
+function addVolunteer(){var email=$('volEmail').value.trim(),name=$('volName').value.trim(),role=$('volRole').value;if(!email){toast('Enter a Google account email','err');return;}call('adminAddVolunteer',[email,name,role]).then(function(r){toast('Added '+r.volunteerId,'ok');$('volEmail').value='';$('volName').value='';loadVolunteers();}).catch(function(e){toast(e.message,'err');});}
+function setVolunteerActive(id,active){var action=active?'reactivate':'deactivate';if(!confirm('Are you sure you want to '+action+' this volunteer?'))return;call('adminSetVolunteerActive',[id,active]).then(function(){toast('Volunteer '+action+'d','ok');loadVolunteers();}).catch(function(e){toast(e.message,'err');});}
+</script>
+</body>
+</html>
