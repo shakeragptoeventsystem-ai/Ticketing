@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>TEST 2 Shakerag PTO Scanner</title>
+<title>Shakerag PTO Scanner</title>
 <!--
   Hosted OUTSIDE Apps Script on purpose: Apps Script's HtmlService renders pages
   inside a sandboxed iframe that does not delegate camera permission, so
@@ -69,7 +69,7 @@
 </head>
 <body>
 <div class="app">
-  <header><div><div class="title">TEST 2 Shakerag PTO Scanner</div><div class="sub" id="hdrSub">Sign in to begin</div></div><span class="pill online" id="netPill">online</span></header>
+  <header><div><div class="title">Shakerag PTO Scanner</div><div class="sub" id="hdrSub">Sign in to begin</div></div><span class="pill online" id="netPill">online</span></header>
   <nav id="workspaceTabs" class="workspace-tabs hidden" aria-label="Workspace"><button id="tabScan" class="active" type="button">Scan</button><button id="tabAdministration" type="button">Administration</button></nav>
   <main>
     <section id="viewLogin" class="card"><h2>Volunteer sign-in</h2><p class="muted">Sign in with the Google account your PTO admin approved as a volunteer.</p><div id="gsiButton"></div><div id="whoami" class="muted center" style="margin:10px 0">Sign in with Google to continue.</div><button class="btn" id="btnContinue" disabled>Continue</button><p class="muted center" style="margin-top:10px">Only approved volunteers can proceed.</p></section>
@@ -154,7 +154,7 @@ $('btnNext').onclick=function(){$('resultCard').classList.add('hidden');STATE.fa
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmtTime(t){try{var d=new Date(t);return d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}catch(e){return String(t);}}
 function beep(){try{var a=new(window.AudioContext||window.webkitAudioContext)();var o=a.createOscillator();var g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=0.05;o.start();setTimeout(function(){o.stop();a.close&&a.close();},110);}catch(e){}}
-var ADMIN_UI={events:[],eventId:null,tab:'fulfillment',items:[],eligibility:null,version:0,eligibilityVersion:0,dialogBusy:false};
+var ADMIN_UI={events:[],eventId:null,tab:'fulfillment',items:[],eligibility:null,version:0,eventVersion:0,eligibilityVersion:0,dialogBusy:false};
 function adminCall(fn,args){if(!isAdmin())return Promise.reject({message:'Admin access required.'});return apiPost_('admin',{fn:fn,args:args||[]});}
 function adminEvent(){return ADMIN_UI.events.find(function(event){return event.eventId===ADMIN_UI.eventId;})||{sessions:[]};}
 function adminOptions(select,entries,placeholder){select.innerHTML='';if(placeholder){var blank=document.createElement('option');blank.value='';blank.textContent=placeholder;select.appendChild(blank);}entries.forEach(function(entry){var option=document.createElement('option');option.value=entry.value;option.textContent=entry.text;select.appendChild(option);});}
@@ -163,16 +163,26 @@ function adminTable(headers,rows){return '<table class="admin-table"><thead><tr>
 function adminError(error){$('adminError').textContent=error.message||String(error);}
 async function openAdministration(familyName){
   if(!isAdmin())return;STATE.lookupVersion++;STATE.lookupBusy=false;await stopScanner();show('viewAdministration');$('adminError').textContent='';
-  var version=++ADMIN_UI.version;
-  try{var events=await adminCall('adminListEvents');if(version!==ADMIN_UI.version||!isAdmin())return;ADMIN_UI.events=events;ADMIN_UI.eventId=events.some(function(event){return event.eventId===STATE.eventId;})?STATE.eventId:(events[0]||{}).eventId;adminOptions($('adminEventSel'),events.map(function(event){return{value:event.eventId,text:event.name+' ('+event.status+')'};}));$('adminEventSel').value=ADMIN_UI.eventId||'';if(familyName){$('adminFamilySearch').value=familyName;selectAdminTab('families');}else selectAdminTab(ADMIN_UI.tab);}catch(error){adminError(error);}
+  ADMIN_UI.version++;
+  if(familyName)ADMIN_UI.eventId=STATE.eventId;
+  try{if(!await loadAdminEvents())return;if(familyName){$('adminFamilySearch').value=familyName;selectAdminTab('families');}else selectAdminTab(ADMIN_UI.tab);}catch(error){adminError(error);}
+}
+async function loadAdminEvents(){
+  var version=++ADMIN_UI.eventVersion,events=await adminCall('adminListEvents');
+  if(version!==ADMIN_UI.eventVersion||!isAdmin()||$('viewAdministration').classList.contains('hidden'))return false;
+  ADMIN_UI.events=events;var preferred=ADMIN_UI.eventId||STATE.eventId;
+  ADMIN_UI.eventId=events.some(function(event){return event.eventId===preferred;})?preferred:(events[0]||{}).eventId;
+  adminOptions($('adminEventSel'),events.map(function(event){return{value:event.eventId,text:event.name+' ('+event.status+')'};}));$('adminEventSel').value=ADMIN_UI.eventId||'';
+  if(!events.length)$('adminError').textContent='No events found.';
+  return true;
 }
 $('tabAdministration').onclick=function(){openAdministration();};
-$('tabScan').onclick=function(){ADMIN_UI.version++;ADMIN_UI.eligibilityVersion++;$('adminDialog').close();STATE.family=null;loadEvents();};
+$('tabScan').onclick=function(){ADMIN_UI.version++;ADMIN_UI.eventVersion++;ADMIN_UI.eligibilityVersion++;$('adminDialog').close();STATE.family=null;loadEvents();};
 $('btnAdminFamily').onclick=function(){if(isAdmin()&&STATE.family)openAdministration(STATE.family.family.name);};
 function selectAdminTab(tab){ADMIN_UI.tab=tab;['fulfillment','families','comps','volunteers','audit'].forEach(function(name){$('admin-'+name).classList.toggle('hidden',name!==tab);document.querySelector('[data-admin-tab="'+name+'"]').classList.toggle('active',name===tab);});adminRefresh();}
 Array.prototype.forEach.call(document.querySelectorAll('[data-admin-tab]'),function(button){button.onclick=function(){selectAdminTab(button.getAttribute('data-admin-tab'));};});
 $('adminEventSel').onchange=function(){ADMIN_UI.eventId=this.value;ADMIN_UI.eligibilityVersion++;ADMIN_UI.eligibility=null;adminRefresh();};
-$('adminRefresh').onclick=adminRefresh;
+$('adminRefresh').onclick=async function(){ADMIN_UI.version++;try{if(await loadAdminEvents())adminRefresh();}catch(error){adminError(error);}};
 $('adminFamilySearchButton').onclick=adminRefresh;
 $('adminFamilySearch').onkeydown=function(event){if(event.key==='Enter')adminRefresh();};
 async function adminRefresh(){
