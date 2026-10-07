@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Information about the Shakerag PTO event check-in and volunteer administration app.">
-  <title>Shakerag PTO Event App</title>
+  <title>Shakerag PTO Event Ticket Scanner</title>
   <style>
     :root{color-scheme:light;--ink:#19313a;--muted:#52666d;--green:#176b58;--line:#d4dfdc;--paper:#fff;--wash:#f2f7f4}
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(140deg,#e5f1e9 0%,var(--wash) 45%,#f8f5e9 100%);color:var(--ink);font:16px/1.6 Georgia,"Times New Roman",serif}
     main{width:min(720px,100% - 32px);margin:clamp(32px,8vh,80px) auto;padding:clamp(24px,6vw,52px);background:var(--paper);border:1px solid var(--line);border-top:6px solid var(--green)}
     .eyebrow{margin:0 0 12px;color:var(--green);font:700 12px/1.3 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase}
-    h1{max-width:560px;margin:0;font-size:clamp(34px,8vw,54px);line-height:1.05}
+    h1{max-width:560px;margin:0;font-size:34px;line-height:1.15;overflow-wrap:anywhere}
     h2{margin:30px 0 8px;font-size:22px}
     p{max-width:62ch;margin:12px 0;color:var(--muted)}
     a{color:#075b50;text-underline-offset:3px}
@@ -23,9 +23,12 @@
 <body>
   <main>
     <p class="eyebrow">Shakerag PTO</p>
-    <h1>Event check-in and volunteer tools</h1>
-    <p>The Shakerag PTO Event App helps approved volunteers check families in, verify event registrations, record item fulfillment, and perform limited event administration. It is used for Shakerag PTO events and is not a public ticket marketplace.</p>
+    <h1>Shakerag PTO Event Ticket Scanner</h1>
+    <p>Operated by Shakerag PTO, the Shakerag PTO Event Ticket Scanner helps approved volunteers scan family QR passes, check families in, verify event registrations, record item fulfillment, and perform role-limited event administration. It is used for Shakerag PTO events and is not a public ticket marketplace.</p>
     <p>Volunteers sign in with Google. Access to scanning and administration is limited by the PTO's volunteer roster and assigned role. Families can use the unique self-check link included with their PTO QR pass to review their own event items and status.</p>
+    <h2>Why we use Google sign-in</h2>
+    <p>We use the verified Google account email supplied during sign-in to identify the volunteer and match that email against the PTO's approved volunteer roster. The assigned role determines access to event records and administration. Volunteer sign-in does not request access to the volunteer's Gmail messages, Google Drive files, or Google Sheets.</p>
+    <p>This information page and the policies linked below are public and do not require sign-in. Only the volunteer app requires Google sign-in and PTO approval.</p>
     <a class="launch" href="https://shakeragptoeventsystem-ai.github.io/Ticketing/ExternalScanner.html">Open the volunteer app</a>
     <h2>Questions</h2>
     <p>For access, event, or privacy questions, contact <a href="mailto:shakeragptoeventsystem@gmail.com">shakeragptoeventsystem@gmail.com</a>.</p>
